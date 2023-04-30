@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
     ibody[i].m = jbody[i].m = drand48();
     ibody[i].fx = jbody[i].fx = ibody[i].fy = jbody[i].fy = 0;
   }
+  const int N = 4;
   int send[N], recv[N];
   for(int i=0; i<N; i++) {
     send[i] = rank+10*i;
