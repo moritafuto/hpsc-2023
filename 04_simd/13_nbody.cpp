@@ -25,8 +25,8 @@ int main() {
     __m256 ryvec = _mm256_sub_ps(yivec, yjvec);
     __m256 rvec = _mm256_rsqrt_ps(rxvec, ryvec);
  
-        fx[i] -= rx * m[j] / (r * r * r);
-        fy[i] -= ry * m[j] / (r * r * r);
+        fx[i] -= rx * m[j] / (rvec * rvec * rvec);
+        fy[i] -= ry * m[j] / (rvec * rvec * rvec);
       }
     }
     printf("%d %g %g\n",i,fx[i],fy[i]);
