@@ -24,13 +24,7 @@ int main() {
     __m256 rxvec = _mm256_sub_ps(xivec, xjvec);
     __m256 ryvec = _mm256_sub_ps(yivec, yjvec);
     __m256 rvec = _mm256_rsqrt_ps(rxvec, ryvec);
-    
-
-
-      if(i != j) {
-        float rx = x[i] - x[j];
-        float ry = y[i] - y[j];
-        float r = std::sqrt(rx * rx + ry * ry);
+ 
         fx[i] -= rx * m[j] / (r * r * r);
         fy[i] -= ry * m[j] / (r * r * r);
       }
