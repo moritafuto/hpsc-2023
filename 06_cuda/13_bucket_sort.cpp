@@ -12,7 +12,14 @@ int main() {
   }
   printf("\n");
 
-  std::vector<int> bucket(range); 
+
+__global__ void bucket(int *n, int &key) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+}
+int main() {
+  const int N=128;
+  int *n;
+  cudaMallocManaged(&n, N*sizeof(int));
   for (int i=0; i<range; i++) {
     bucket[i] = 0;
   }
@@ -24,9 +31,12 @@ int main() {
       key[j++] = i;
     }
   }
-
+  bucket<<<1,N>>>(key, n);
+  cudaDeviceSynchronize();
   for (int i=0; i<n; i++) {
     printf("%d ",key[i]);
   }
   printf("\n");
-}
+  cudaFree(n);
+}  
+ 
