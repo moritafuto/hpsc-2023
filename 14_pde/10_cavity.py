@@ -18,13 +18,15 @@ int main() {
     vector<float> x(nx);
     vector<float> y(ny);
     for (int i=0; i<nx; i++)
-      x[i] =i +dx;
+      x[i] =i * dx;
     for (int j=0; j<ny; j++)
-      y[j] =j +dy;
+      y[j] =j * dy;
     matrix u(ny,vector<float>(nx,0));
     matrix v(ny,vector<float>(nx,0));
     matrix b(ny,vector<float>(nx,0));
     matrix p(ny,vector<float>(nx,0));
+    matrix un(ny,vector<float>(nx,0));
+    matrix vn(ny,vector<float>(nx,0));
     matrix pn(ny,vector<float>(nx,0));
     for (int n=0; n<nt; n++) {
         for (int j=1; j<ny-1; j++) {
@@ -51,14 +53,44 @@ int main() {
                 }
             }
             for (int j=1; j<ny-1; j++) {
-                p[j][nx-1]= p[j][nx-2];
+                p[j][nx-1] = p[j][nx-2];
                 p[j][0] = p[j][1];
             }
             for (int i=1; i<nx-1; i++) {
-                p[0][i] =p[1][i];
+                p[0][i] = p[1][i];
                 p[ny-1][i] = p[ny-2][i];
             }
         }
+        for (int j=0; j<ny; j++) {
+                for (int i=0; i<nx; i++) {
+                    un[j][i] = u[j][i];
+                    vn[j][i] = v[j][i];
+                }
+        }
+        for (int j=1; j<ny-1; j++) {
+                for (int i=1; i<nx-1; i++) {
+                    u[j][i] = un[j][i] - un[j][i] * dt / dx * (un[j][i] - un[j][i-1])
+                                       - un[j][i] * dt / dy * (un[j][i] - un[j-1][i])
+                                       - dt / (2 * rho * dx) * (p[j][i+1] - p[j][i-1])
+                                       + nu * dt / dx*dx * (un[j][i+1] - 2 * un[j][i] + un[j][i-1])
+                                       + nu * dt / dy*dy * (un[j+1][i] - 2 * un[j][i] + un[j-1][i]);      
+                    v[j][i] = vn[j][i] - vn[j][i] * dt / dx * (vn[j][i] - vn[j][i-1])
+                                       - vn[j][i] * dt / dy * (vn[j][i] - vn[j-1][i])
+                                       - dt / (2 * rho * dx) * (p[j][i+1] - p[j][i-1])
+                                       + nu * dt / dx*dx * (vn[j][i+1] - 2 * vn[j][i] + vn[j][i-1])
+                                       + nu * dt / dy*dy * (un[j+1][i] - 2 * vn[j][i] + vn[j-1][i]); 
+                }
+        }
+        for (int j=1; j<ny-1; j++) {
+            u[j][0] = 0;
+            u[j][nx-1] = 0;
+            v[j][0] = 0;
+            v[j][nx-1] = 0;
+        }
+        for (int i=1; i<nx-1; i++) {
+            u[0][i] = 0;
+            u[nx-1][i] = 1;
+            v[0][i] = 0;
+            v[nx-1][i] = 0;
     }
-}
-        
+} 
