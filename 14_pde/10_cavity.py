@@ -2,12 +2,13 @@
 #include <cstdio>
 #include <vector>
 #include <chrono>
+#include <immintrin.h>
 using namespace std;
 typedef vector<vector<float>> matrix;
 
 int main() {
-    const int nx = 41;
-    const int ny = 41;
+    const int nx = 42;
+    const int ny = 42;
     int nt = 500;
     int nit = 50;
     float dx = 2./ (nx - 1);
@@ -29,8 +30,9 @@ int main() {
     matrix vn(ny,vector<float>(nx,0));
     matrix pn(ny,vector<float>(nx,0));
     for (int n=0; n<nt; n++) {
+#pragma omp parallel for
         for (int j=1; j<ny-1; j++) {
-             for (int i=1; j<nx-1; i++) {
+             for (int i=1; i<nx-1; i++) {
                   b[j][i] = rho * (1 / dt *
                   ((u[j][i+1] - u[j][i-1]) / (2 * dx) + (v[j+1][i] - v[j-1][i] / (2 * dy)) -
                   ((u[j][i+1] - u[j][i-1]) / (2 * dx))*(u[j][i+1] - u[j][i-1]) / (2 * dx))
@@ -40,11 +42,13 @@ int main() {
              }
         }
         for  (int it=0; it<nit; it++) {
+
             for (int j=0; j<ny; j++) {
                 for (int i=0; i<nx; i++) {
                     pn[j][i]=p[j][i];
                 }
             }
+ #pragma omp parallel for
             for (int j=1; j<ny-1; j++) {
                 for (int i=0; i<nx-1; i++) {
                     p[j][i]=(dy*dy * (pn[j][i+1] + pn[j][i-1]) +
@@ -67,18 +71,36 @@ int main() {
                     vn[j][i] = v[j][i];
                 }
         }
-        for (int j=1; j<ny-1; j++) {
-                for (int i=1; i<nx-1; i++) {
-                    u[j][i] = un[j][i] - un[j][i] * dt / dx * (un[j][i] - un[j][i-1])
-                                       - un[j][i] * dt / dy * (un[j][i] - un[j-1][i])
-                                       - dt / (2 * rho * dx) * (p[j][i+1] - p[j][i-1])
-                                       + nu * dt / dx*dx * (un[j][i+1] - 2 * un[j][i] + un[j][i-1])
-                                       + nu * dt / dy*dy * (un[j+1][i] - 2 * un[j][i] + un[j-1][i]);      
-                    v[j][i] = vn[j][i] - vn[j][i] * dt / dx * (vn[j][i] - vn[j][i-1])
-                                       - vn[j][i] * dt / dy * (vn[j][i] - vn[j-1][i])
-                                       - dt / (2 * rho * dx) * (p[j][i+1] - p[j][i-1])
-                                       + nu * dt / dx*dx * (vn[j][i+1] - 2 * vn[j][i] + vn[j][i-1])
-                                       + nu * dt / dy*dy * (un[j+1][i] - 2 * vn[j][i] + vn[j-1][i]); 
+#pragma omp parallel for
+        for (int j=1; j<ny-1; j++) {   
+#pragma acc parallel loop
+                for (int i=1; i<nx-1; i+=8) {
+                    __m256 unvec = _mm256_load_ps(&un[j][i]); 
+                    __m256 uim1 = _mm256_load_ps(&un[j][i-1]);
+                    __m256 uip1 = _mm256_load_ps(&un[j][i+1]);
+                    __m256 ujm1 = _mm256_load_ps(&un[j-1][i]);
+                    __m256 ujp1 = _mm256_load_ps(&un[j+1][i]);
+                    __m256 pim1 = _mm256_load_ps(&p[j][i-1]);
+                    __m256 pip1 = _mm256_load_ps(&p[j][i+1]);
+                    __m256 vnvec = _mm256_load_ps(&vn[j][i]); 
+                    __m256 vim1 = _mm256_load_ps(&vn[j][i-1]);
+                    __m256 vip1 = _mm256_load_ps(&vn[j][i+1]);
+                    __m256 vjm1 = _mm256_load_ps(&vn[j-1][i]);
+                    __m256 vjp1 = _mm256_load_ps(&vn[j+1][i]);
+                    __m256 uvec;
+                    uvec = unvec - unvec * dt / dx * (unvec - uim1)
+                                       - unvec * dt / dy * (unvec - ujm1)
+                                       - dt / (2 * rho * dx) * (pip1 - pim1)
+                                       + nu * dt / dx*dx * (uip1 - 2 * unvec + uim1)
+                                       + nu * dt / dy*dy * (ujp1 - 2 * unvec + ujm1); 
+                    __m256 vvec;
+                    vvec = vnvec - vnvec * dt / dx * (vnvec - vim1)
+                                       - vnvec * dt / dy * (vnvec - vjm1)
+                                       - dt / (2 * rho * dx) * (pip1 - pim1)
+                                       + nu * dt / dx*dx * (vip1 - 2 * vnvec + vim1)
+                                       + nu * dt / dy*dy * (vjp1 - 2 * vnvec + vjm1); 
+                    _mm256_store_ps(&u[j][i], uvec);
+                    _mm256_store_ps(&v[j][i], vvec);
                 }
         }
         for (int j=1; j<ny-1; j++) {
@@ -92,5 +114,6 @@ int main() {
             u[nx-1][i] = 1;
             v[0][i] = 0;
             v[nx-1][i] = 0;
+        }
     }
-} 
+}
