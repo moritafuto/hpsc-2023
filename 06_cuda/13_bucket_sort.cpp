@@ -2,6 +2,13 @@
 #include <cstdlib>
 #include <vector>
 
+__global__ void bucket(int* key, int* bucket, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        atomicAdd(&bucket[key[idx]], 1);
+    }
+}
+
 int main() {
   int n = 50;
   int range = 5;
@@ -12,14 +19,7 @@ int main() {
   }
   printf("\n");
 
-
-__global__ void bucket(int *n, int &key) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-}
-int main() {
-  const int N=128;
-  int *n;
-  cudaMallocManaged(&n, N*sizeof(int));
+  std::vector<int> bucket(range); 
   for (int i=0; i<range; i++) {
     bucket[i] = 0;
   }
@@ -31,12 +31,9 @@ int main() {
       key[j++] = i;
     }
   }
-  bucket<<<1,N>>>(key, n);
-  cudaDeviceSynchronize();
+
   for (int i=0; i<n; i++) {
     printf("%d ",key[i]);
   }
   printf("\n");
-  cudaFree(n);
-}  
- 
+}
